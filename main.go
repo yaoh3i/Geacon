@@ -1,8 +1,6 @@
 package main
 
-import (
-	"Geacon/core"
-)
+import "Geacon/core"
 
 func main() {
 	for core.TRUE {

@@ -2,9 +2,11 @@ package core
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"io"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 )
@@ -74,14 +76,10 @@ func LittleToBig(Bytes []byte) []byte {
 	return IntToByte(len(Bytes), _ByteToInt(Bytes))
 }
 
-func JoinMap(Map ...map[string]string) map[string]string {
-	New := map[string]string{}
-	for _, x := range Map {
-		for Key, Value := range x {
-			New[Key] = Value
-		}
-	}
-	return New
+func TrimPSfix(Data, prefix, suffix string) string {
+	Data = strings.TrimPrefix(Data, prefix)
+	Data = strings.TrimSuffix(Data, suffix)
+	return Data
 }
 
 func JoinBytes(Bytes ...[]byte) []byte {
@@ -116,4 +114,19 @@ func WriteLock(Worker func())  {
 	RWLock.Lock()
 	Worker()
 	RWLock.Unlock()
+}
+
+func Base64ToMap(Base64 string) map[string]string {
+	Map := map[string]string{}
+	Bytes, _ := base64.StdEncoding.DecodeString(Base64)
+	for _, v := range strings.Split(string(Bytes), "\n") {
+		if !strings.Contains(v, ":") { continue }
+		Line := strings.SplitN(v, ":", 2)
+		Key  := strings.TrimSpace(Line[0])
+		Val  := strings.TrimSpace(Line[1])
+		if Key != "" || Val != "" {
+			Map[Key] = Val
+		}
+	}
+	return Map
 }
