@@ -15,8 +15,8 @@ func GetHeader(Map map[string]interface{}) map[string]string {
 
 func GetOutput(Bytes []byte) []byte {
 	Info := PullInfo["Output"].(map[string]string)
-	Data := TrimPSfix(string(Bytes), Info["Prepend"], Info["Append"])
-	return Decoding(Data, Info["Coding"])
+	Data := Bytes[ToLength(Info["Prepend"]):len(Bytes)-ToLength(Info["Append"])]
+	return Decoding(string(Data), Info["Coding"])
 }
 
 func SetOutput(Bytes []byte) *strings.Reader {

@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"io"
 	"math/rand"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -76,10 +77,10 @@ func LittleToBig(Bytes []byte) []byte {
 	return IntToByte(len(Bytes), _ByteToInt(Bytes))
 }
 
-func TrimPSfix(Data, prefix, suffix string) string {
-	Data = strings.TrimPrefix(Data, prefix)
-	Data = strings.TrimSuffix(Data, suffix)
-	return Data
+func ToLength(s string) int {
+	v, err := strconv.Atoi(s)
+	if err == nil { return v }
+	return len(s)
 }
 
 func JoinBytes(Bytes ...[]byte) []byte {
